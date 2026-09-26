@@ -1,6 +1,22 @@
 import { apiClient, delay, withMockFallback } from './client'
 import { mockStore } from './mockData'
 
+export const getAvailableGroups = async () => {
+  const { data } = await apiClient.get('/groups')
+  const rawGroups = Array.isArray(data) ? data : Array.isArray(data?.groups) ? data.groups : []
+
+  return rawGroups
+    .map((group) => {
+      const id = group?.id ?? group?.groupId ?? null
+      if (!id) return null
+      return {
+        id: String(id),
+        name: group?.name ?? group?.groupName ?? String(id),
+      }
+    })
+    .filter(Boolean)
+}
+
 export const getGroupMembers = async (groupId) =>
   withMockFallback(
     async () => {
