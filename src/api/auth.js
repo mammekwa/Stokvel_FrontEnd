@@ -1,11 +1,7 @@
-import { apiClient } from './client'
+import { apiClient, unwrap } from './client'
 
-export const register = async (payload) => {
-  const { data } = await apiClient.post('/auth/register', payload)
-  return data
-}
+// AuthResponse: { userId?, token, role }
+export const login = (credentials) => unwrap(apiClient.post('/auth/login', credentials))
 
-export const login = async (payload) => {
-  const { data } = await apiClient.post('/auth/login', payload)
-  return data
-}
+// RegisterRequest: { fullName, email, phone, password, nationalId }
+export const register = (details) => unwrap(apiClient.post('/auth/register', details))

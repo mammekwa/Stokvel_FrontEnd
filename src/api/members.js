@@ -1,17 +1,7 @@
-import { apiClient, delay, withMockFallback } from './client'
+import { apiClient, unwrap } from './client'
 
-export const getMemberProfile = async (id) =>
-  withMockFallback(
-    async () => {
-      const { data } = await apiClient.get(`/members/${id}`)
-      return data
-    },
-    async () => {
-      await delay()
-      return {
-        id,
-        loanRestricted: false,
-        restrictionReason: '',
-      }
-    },
-  )
+// All of the current user's memberships, any status: [{ memberId, groupId, groupName, status }]
+export const getMyMemberships = () => unwrap(apiClient.get('/members/me'))
+
+// MemberResponse, including loanRestricted (FR-07)
+export const getMember = (memberId) => unwrap(apiClient.get(`/members/${memberId}`))

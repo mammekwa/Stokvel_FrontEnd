@@ -8,10 +8,31 @@
 }
 
 body {
-  @apply m-0 min-h-screen bg-brand-bg text-brand-text;
+  @apply m-0 min-h-screen bg-brand-bg text-brand-text antialiased;
   font-size: 16px;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Reports: "Print / save as PDF" prints only the summary card. */
+@media print {
+  body {
+    background: white;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+    box-shadow: none;
+  }
 }

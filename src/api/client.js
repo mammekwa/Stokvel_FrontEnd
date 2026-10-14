@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
 
 let getToken = () => null
 let handleUnauthorized = () => {}
@@ -16,56 +15,55 @@ export const setUnauthorizedHandler = (handler) => {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  // Render's free tier can take ~60s to wake up.
+  timeout: 70000,
 })
 
 apiClient.interceptors.request.use((config) => {
-  const isAuthRoute = config.url?.includes('/auth/login') || config.url?.includes('/auth/register')
-  if (!isAuthRoute) {
-    const token = getToken()
-    if (token) {
-      config.headers.Authorization = 'Bearer ' + token
-    }
+  const token = getToken()
+  if (token && !config.url?.startsWith('/auth/')) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
+// Every error that leaves the API layer has the same shape (NFR-01):
+// { status, message, details: string[] }
 const normalizeError = (error) => {
-  const backendError = error?.response?.data
-  if (backendError?.message) {
-    return { field: backendError.field ?? null, message: backendError.message }
+  const status = error?.response?.status ?? null
+  const body = error?.response?.data
+
+  if (!error?.response) {
+    const message = error?.code === 'ECONNABORTED'
+      ? 'The server took too long to respond. It may be waking up — please try again.'
+      : 'Cannot reach the server. Check your connection and that the backend is running.'
+    return { status, message, details: [] }
   }
 
-  if (error?.response?.status === 401) {
-    return { field: null, message: 'Your session has expired. Please log in again.' }
+  if (status === 401) {
+    return { status, message: body?.message || 'Your session has expired. Please log in again.', details: [] }
   }
 
-  return { field: null, message: 'Something went wrong. Please try again.' }
+  if (status === 403 && !body?.message) {
+    return { status, message: 'You do not have permission to do this.', details: [] }
+  }
+
+  return {
+    status,
+    message: body?.message || 'Something went wrong. Please try again.',
+    details: Array.isArray(body?.details) ? body.details : [],
+  }
 }
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const isLoginAttempt = error?.config?.url?.startsWith('/auth/')
+    if (error?.response?.status === 401 && !isLoginAttempt) {
       handleUnauthorized()
     }
     return Promise.reject(normalizeError(error))
   },
 )
 
-export const withMockFallback = async (requestFn, mockFn) => {
-  if (USE_MOCKS) {
-    return mockFn()
-  }
-
-  try {
-    return await requestFn()
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      return mockFn()
-    }
-    throw error
-  }
-}
-
-export const delay = (ms = 900) => new Promise((resolve) => setTimeout(resolve, ms))
+export const unwrap = (request) => request.then((response) => response.data)

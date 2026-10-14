@@ -1,38 +1,12 @@
-import { apiClient, delay, withMockFallback } from './client'
-import { mockStore } from './mockData'
+import { apiClient, unwrap } from './client'
 
-export const createContribution = async (payload) =>
-  withMockFallback(
-    async () => {
-      const { data } = await apiClient.post('/contributions', payload)
-      return data
-    },
-    async () => {
-      await delay()
-      const item = {
-        id: `c-${Date.now()}`,
-        amount: Number(payload.amount),
-        date: new Date().toISOString(),
-        status: 'pending',
-        txHash: null,
-      }
-      mockStore.contributions.unshift(item)
-      setTimeout(() => {
-        item.status = 'confirmed'
-        item.txHash = `0x${Math.random().toString(16).slice(2, 14)}`
-      }, 2000)
-      return item
-    },
-  )
+// ContributionRequest: { amount, paymentReference? }
+// ContributionResponse: { contributionId, memberId, amount, contributionDate, txHash, blockchainConfirmed, createdAt }
+export const logContribution = (groupId, payload) =>
+  unwrap(apiClient.post(`/groups/${groupId}/contributions`, payload))
 
-export const getMemberContributions = async (memberId) =>
-  withMockFallback(
-    async () => {
-      const { data } = await apiClient.get(`/members/${memberId}/contributions`)
-      return data
-    },
-    async () => {
-      await delay()
-      return [...mockStore.contributions].sort((a, b) => new Date(b.date) - new Date(a.date))
-    },
-  )
+// Newest first (FR-02) — sorted here because the backend does not guarantee order.
+export const getMyContributions = async (groupId) => {
+  const items = await unwrap(apiClient.get(`/groups/${groupId}/contributions/me`))
+  return [...items].sort((a, b) => new Date(b.createdAt || b.contributionDate) - new Date(a.createdAt || a.contributionDate))
+}

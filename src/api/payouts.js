@@ -1,26 +1,14 @@
-import { apiClient, delay, withMockFallback } from './client'
-import { mockStore } from './mockData'
+import { apiClient, unwrap } from './client'
 
-export const createPayout = async (payload) =>
-  withMockFallback(
-    async () => {
-      const { data } = await apiClient.post('/payouts', payload)
-      return data
-    },
-    async () => {
-      await delay()
-      const payout = {
-        id: `p-${Date.now()}`,
-        memberId: payload.memberId,
-        amount: Number(payload.amount),
-        status: 'pending',
-        txHash: null,
-      }
-      mockStore.payouts.unshift(payout)
-      setTimeout(() => {
-        payout.status = 'confirmed'
-        payout.txHash = `0x${Math.random().toString(16).slice(2, 14)}`
-      }, 2000)
-      return payout
-    },
-  )
+// NOT YET AVAILABLE ON THE BACKEND.
+// These follow the existing URL conventions so the screens work as soon as the
+// endpoints exist. Turn them on with FEATURES.payouts / FEATURES.repayments.
+
+// FR-09: { memberId, amount }
+export const processPayout = (groupId, payload) => unwrap(apiClient.post(`/groups/${groupId}/payouts`, payload))
+
+export const getGroupPayouts = (groupId) => unwrap(apiClient.get(`/groups/${groupId}/payouts`))
+
+// FR-05: { amount }
+export const repayLoan = (groupId, loanId, payload) =>
+  unwrap(apiClient.post(`/groups/${groupId}/loans/${loanId}/repayments`, payload))

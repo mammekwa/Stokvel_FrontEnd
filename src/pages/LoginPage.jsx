@@ -1,26 +1,28 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import Button from '../components/Button'
-import Card from '../components/Card'
-import ErrorBanner from '../components/ErrorBanner'
-import Input from '../components/Input'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Button, ErrorBanner, Input, Spinner } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
+import AuthLayout from '../layout/AuthLayout'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const location = useLocation()
+  const redirectTo = location.state?.from || '/'
+
+  const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))
 
   const submit = async (event) => {
     event.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      await login({ email, password })
-      navigate('/')
+      await login({ email: form.email.trim(), password: form.password })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err)
     } finally {
@@ -29,18 +31,32 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-4">
-      <Card title="Login">
+    <AuthLayout
+      footer={
+        <>
+          New to StokvelChain?{' '}
+          <Link className="font-semibold text-brand-navy underline" state={location.state} to="/register">
+            Create an account
+          </Link>
+        </>
+      }
+      subtitle="Log in to manage your stokvel."
+      title="Welcome back"
+    >
+      <form className="space-y-4" onSubmit={submit}>
         <ErrorBanner error={error} />
-        <form onSubmit={submit}>
-          <Input label="Email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
-          <Input label="Password" onChange={(event) => setPassword(event.target.value)} type="password" value={password} />
-          <Button disabled={loading} type="submit">{loading ? 'Logging in...' : 'Login'}</Button>
-        </form>
-        <p className="mt-3 text-sm text-slate-700">
-          No account? <Link className="font-semibold text-brand-navy underline" to="/register">Register</Link>
-        </p>
-      </Card>
-    </main>
+        <Input autoComplete="email" label="Email" onChange={update('email')} required type="email" value={form.email} />
+        <Input autoComplete="current-password" label="Password" onChange={update('password')} required type="password" value={form.password} />
+        <Button block disabled={loading} type="submit">
+          {loading ? (
+            <>
+              <Spinner /> Logging in…
+            </>
+          ) : (
+            'Log in'
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }
