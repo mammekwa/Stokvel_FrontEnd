@@ -16,3 +16,5 @@ export const RULES = {
   maxRepaymentMonths: 12,
   minOverrideReasonLength: 20,
 }
+
+console.log('VITE_FEATURE_REPAYMENTS =', JSON.stringify(import.meta.env.VITE_FEATURE_REPAYMENTS))
